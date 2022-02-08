@@ -1,93 +1,79 @@
 package springbook.user.dao;
 
-import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import springbook.user.domain.User;
 
 import javax.sql.DataSource;
 import java.sql.*;
+import java.util.List;
 
 public class UserDao {
 
-    private DataSource dataSource;
-
-    private ConnectionMaker connectionMaker;
-    //생성자 주입
-//    public UserDao(ConnectionMaker connectionMaker) {
-//        this.connectionMaker = connectionMaker;
-//    }
-
-    //수정자 주입
-    public void setConnectionMaker(ConnectionMaker connectionMaker) {
-        this.connectionMaker = connectionMaker;
-    }
+    private JdbcTemplate jdbcTemplate;
 
     public void setDataSource(DataSource dataSource) {
-        this.dataSource = dataSource;
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
     }
 
-    public void add(User user) throws SQLException {
-        //ConnectionMaker 사용 코드
-//        Connection c = connectionMaker.makeConnection();
-
-        //ConnectionMaker 보다 확장된 기능을 제공하는 DataSource 사용 코드
-        Connection c = dataSource.getConnection();
-
-        PreparedStatement ps = c.prepareStatement("insert into users(id, name, password) values(?, ?, ?)");
-        ps.setString(1, user.getId());
-        ps.setString(2, user.getName());
-        ps.setString(3, user.getPassword());
-
-        ps.executeUpdate();
-        ps.close();
-        c.close();
+    private RowMapper<User> userMapper() {
+        return new RowMapper<User>() {
+            @Override
+            public User mapRow(ResultSet rs, int rowNum) throws SQLException {
+                User user = new User();
+                user.setId(rs.getString("id"));
+                user.setName(rs.getString("name"));
+                user.setPassword(rs.getString("password"));
+                return user;
+            }
+        };
     }
 
-    public User get(String id) throws SQLException {
-        Connection c = dataSource.getConnection();
-
-        PreparedStatement ps = c.prepareStatement("select * from users where id = ?");
-        ps.setString(1, id);
-
-
-        ResultSet rs = ps.executeQuery();
-        User user = null;
-        if (rs.next()) {
-            user = new User();
-            user.setId(rs.getString("id"));
-            user.setName(rs.getString("name"));
-            user.setPassword(rs.getString("password"));
-        }
-        rs.close();
-        ps.close();
-        c.close();
-
-        if (user == null) throw new EmptyResultDataAccessException(1);
-        return user;
+    public void add(final User user) {
+        this.jdbcTemplate.update("insert into users(id, name, password) values(?,?,?)",
+                user.getId(), user.getName(), user.getPassword());
     }
 
-    public void clearAll() throws SQLException {
-        Connection c = dataSource.getConnection();
-
-        PreparedStatement ps = c.prepareStatement("DELETE FROM users;");
-
-        ps.executeUpdate();
-        ps.close();
-        c.close();
+    public User get(String id) {
+        return this.jdbcTemplate.queryForObject("select * from users where id = ?", new Object[]{id}, userMapper());
     }
 
-    public int getCount() throws SQLException {
-        Connection c = dataSource.getConnection();
-
-        PreparedStatement ps = c.prepareStatement("SELECT count(*) from users");
-
-        ResultSet rs = ps.executeQuery();
-        rs.next();
-        int count = rs.getInt(1);
-
-        rs.close();
-        ps.close();
-        c.close();
-
-        return count;
+    public void clearAll() {
+        this.jdbcTemplate.update("delete from users");
     }
+
+    public int getCount() {
+        return this.jdbcTemplate.queryForObject("select count(*) from users", Integer.class);
+    }
+
+    public List<User> getAll() {
+        return this.jdbcTemplate.query("select * from users order by id", userMapper());
+    }
+
+//    public void jdbcContextWithStatementStrategy(StatementStrategy smt) throws SQLException {
+//        Connection c = null;
+//        PreparedStatement ps = null;
+//
+//        try {
+//            c = dataSource.getConnection();
+//            ps = smt.makePreparedStatement(c);
+//
+//            ps.executeUpdate();
+//        } catch (SQLException e) {
+//            throw e;
+//        } finally {
+//            if (ps != null) {
+//                try {
+//                    ps.close();
+//                } catch (SQLException e) {
+//                }
+//            }
+//            if (c != null) {
+//                try {
+//                    c.close();
+//                } catch (SQLException e) {
+//                }
+//            }
+//        }
+//    }
 }

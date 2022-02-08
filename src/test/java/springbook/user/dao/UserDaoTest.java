@@ -2,29 +2,19 @@ package springbook.user.dao;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.GenericXmlApplicationContext;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
 import springbook.user.domain.User;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-//@ExtendWith(SpringExtension.class)
-//@ContextConfiguration(locations = "/test-applicationContext.xml")
-//@DirtiesContext
 class UserDaoTest {
 
-//    @Autowired
     private UserDao dao;
 
     private User user1;
@@ -39,11 +29,8 @@ class UserDaoTest {
         this.user2 = new User("sorisori", "수리수리", "bi");
         this.user3 = new User("masori", "마수리", "tk");
 
-//        DataSource dataSource = new SingleConnectionDataSource(
-//                "jdbc:mysql://localhost/testdb", "tobi_spring", "test", true);
-//        dao.setDataSource(dataSource);
-
         dao = new UserDao();
+
         DataSource dataSource = new SingleConnectionDataSource(
                 "jdbc:mysql://localhost/tobi_spring", "tobi_spring", "test", true);
         dao.setDataSource(dataSource);
@@ -51,7 +38,7 @@ class UserDaoTest {
 
     //main 메소드 -> JUnit 사용해 변경
     @Test
-    public void addAndGet() throws SQLException {
+    public void addAndGet() {
         dao.clearAll();
         assertThat(dao.getCount()).isEqualTo(0);
 
@@ -73,7 +60,7 @@ class UserDaoTest {
     }
 
     @Test
-    public void getCount() throws SQLException {
+    public void getCount() {
         dao.clearAll();
         assertThat(dao.getCount()).isEqualTo(0);
         dao.add(user1);
@@ -88,8 +75,40 @@ class UserDaoTest {
     }
 
     @Test
-    public void getUserFailure() throws SQLException {
+    public void getUserFailure() {
         dao.clearAll();
         assertThrows(EmptyResultDataAccessException.class,() -> dao.get("error_id"));
+    }
+
+    @Test
+    void getAll() {
+        dao.clearAll();
+
+        List<User> users0 = dao.getAll();
+        assertThat(users0.size()).isEqualTo(0);
+
+        dao.add(user1);
+        List<User> users1 = dao.getAll();
+        assertThat(users1.size()).isEqualTo(1);
+        checkSameUser(user1, users1.get(0));
+
+        dao.add(user2);
+        List<User> users2 = dao.getAll();
+        assertThat(users2.size()).isEqualTo(2);
+        checkSameUser(user1, users2.get(0));
+        checkSameUser(user2, users2.get(1));
+
+        dao.add(user3);
+        List<User> users3 = dao.getAll();
+        assertThat(users1.size()).isEqualTo(3);
+        checkSameUser(user1, users1.get(0));
+        checkSameUser(user2, users1.get(1));
+        checkSameUser(user3, users1.get(2));
+    }
+
+    private void checkSameUser(User user1, User user2) {
+        assertThat(user1.getId()).isEqualTo(user2.getId());
+        assertThat(user1.getName()).isEqualTo(user2.getName());
+        assertThat(user1.getPassword()).isEqualTo(user2.getPassword());
     }
 }
