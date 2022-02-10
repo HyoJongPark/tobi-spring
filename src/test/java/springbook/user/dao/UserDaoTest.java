@@ -2,8 +2,15 @@ package springbook.user.dao;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.datasource.SingleConnectionDataSource;
+import org.springframework.jdbc.support.SQLErrorCodeSQLExceptionTranslator;
+import org.springframework.jdbc.support.SQLExceptionTranslator;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import springbook.user.domain.User;
 
 import javax.sql.DataSource;
@@ -13,9 +20,15 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+@ExtendWith(SpringExtension.class)
+@ContextConfiguration(locations = "/test-applicationContext.xml")
 class UserDaoTest {
 
+    @Autowired
     private UserDao dao;
+
+    @Autowired
+    DataSource dataSource;
 
     private User user1;
     private User user2;
@@ -23,17 +36,9 @@ class UserDaoTest {
 
     @BeforeEach
     public void setUp() {
-        System.out.println("this = " + this);
-
-        this.user1 = new User("soodo", "박효종", "hi");
-        this.user2 = new User("sorisori", "수리수리", "bi");
-        this.user3 = new User("masori", "마수리", "tk");
-
-        dao = new UserDao();
-
-        DataSource dataSource = new SingleConnectionDataSource(
-                "jdbc:mysql://localhost/tobi_spring", "tobi_spring", "test", true);
-        dao.setDataSource(dataSource);
+        this.user1 = new User("a", "박효종", "hi");
+        this.user2 = new User("b", "수리수리", "bi");
+        this.user3 = new User("c", "마수리", "tk");
     }
 
     //main 메소드 -> JUnit 사용해 변경
@@ -98,17 +103,41 @@ class UserDaoTest {
         checkSameUser(user1, users2.get(0));
         checkSameUser(user2, users2.get(1));
 
+        //getAll 메소드 사용시 id 알파벳 순서로 정렬되어 원하는 결과가 다른것에 영향을 받음
         dao.add(user3);
         List<User> users3 = dao.getAll();
-        assertThat(users1.size()).isEqualTo(3);
-        checkSameUser(user1, users1.get(0));
-        checkSameUser(user2, users1.get(1));
-        checkSameUser(user3, users1.get(2));
+        assertThat(users3.size()).isEqualTo(3);
+        checkSameUser(user1, users3.get(0));
+        checkSameUser(user2, users3.get(1));
+        checkSameUser(user3, users3.get(2));
     }
 
-    private void checkSameUser(User user1, User user2) {
-        assertThat(user1.getId()).isEqualTo(user2.getId());
-        assertThat(user1.getName()).isEqualTo(user2.getName());
-        assertThat(user1.getPassword()).isEqualTo(user2.getPassword());
+    @Test
+    public void duplicateKey() {
+        dao.clearAll();
+
+        dao.add(user1);
+        assertThrows(DataAccessException.class, () -> dao.add(user1));
+    }
+
+    @Test
+    public void sqlExceptionTranslate() {
+        dao.clearAll();
+
+        try {
+            dao.add(user1);
+            dao.add(user1);
+        } catch (DuplicateKeyException e) {
+            SQLException sqlEx = (SQLException) e.getRootCause();
+            SQLExceptionTranslator set = new SQLErrorCodeSQLExceptionTranslator(this.dataSource);
+
+            assertThat(set.translate(null, null, sqlEx)).isInstanceOf(DuplicateKeyException.class);
+        }
+    }
+
+    private void checkSameUser(User userA, User userB) {
+        assertThat(userA.getId()).isEqualTo(userB.getId());
+        assertThat(userA.getName()).isEqualTo(userB.getName());
+        assertThat(userA.getPassword()).isEqualTo(userB.getPassword());
     }
 }
