@@ -11,6 +11,7 @@ import org.springframework.jdbc.support.SQLErrorCodeSQLExceptionTranslator;
 import org.springframework.jdbc.support.SQLExceptionTranslator;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import springbook.user.domain.Level;
 import springbook.user.domain.User;
 
 import javax.sql.DataSource;
@@ -36,9 +37,9 @@ class UserDaoTest {
 
     @BeforeEach
     public void setUp() {
-        this.user1 = new User("a", "박효종", "hi");
-        this.user2 = new User("b", "수리수리", "bi");
-        this.user3 = new User("c", "마수리", "tk");
+        this.user1 = new User("a", "박효종", "hi", Level.BASIC, 1, 0);
+        this.user2 = new User("b", "수리수리", "bi", Level.SILVER, 55, 10);
+        this.user3 = new User("c", "마수리", "tk", Level.GOLD, 100, 40);
     }
 
     //main 메소드 -> JUnit 사용해 변경
@@ -52,12 +53,10 @@ class UserDaoTest {
         assertThat(dao.getCount()).isEqualTo(2);
 
         User userGet1 = dao.get(user1.getId());
-        assertThat(user1.getName()).isEqualTo(userGet1.getName());
-        assertThat(user1.getPassword()).isEqualTo(userGet1.getPassword());
+        checkSameUser(userGet1, user1);
 
         User userGet2 = dao.get(user2.getId());
-        assertThat(user2.getName()).isEqualTo(userGet2.getName());
-        assertThat(user2.getPassword()).isEqualTo(userGet2.getPassword());
+        checkSameUser(userGet2, user2);
 
         dao.clearAll();
         assertThat(dao.getCount()).isEqualTo(0);
@@ -135,9 +134,31 @@ class UserDaoTest {
         }
     }
 
+    @Test
+    void update() {
+        dao.clearAll();
+
+        dao.add(user1);//수정할 이용자
+        dao.add(user2);//수정하지 않을 이용자
+
+        user1.setName("오민규");
+        user1.setPassword("update");
+        user1.setLevel(Level.GOLD);
+        user1.setRecommend(999);
+        dao.update(user1);
+
+        User user1update = dao.get(user1.getId());
+        checkSameUser(user1update, user1);
+        User user2same = dao.get(user2.getId());
+        checkSameUser(user2same, user2);
+    }
+
     private void checkSameUser(User userA, User userB) {
         assertThat(userA.getId()).isEqualTo(userB.getId());
         assertThat(userA.getName()).isEqualTo(userB.getName());
         assertThat(userA.getPassword()).isEqualTo(userB.getPassword());
+        assertThat(userA.getLevel()).isEqualTo(userB.getLevel());
+        assertThat(userA.getLogin()).isEqualTo(userB.getLogin());
+        assertThat(userA.getRecommend()).isEqualTo(userB.getRecommend());
     }
 }

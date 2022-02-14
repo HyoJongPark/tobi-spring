@@ -14,4 +14,6 @@ public interface UserDao {
     void clearAll();
 
     int getCount();
+
+    void update(User user);
 }
