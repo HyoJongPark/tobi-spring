@@ -10,6 +10,8 @@ public class User {
     int login;
     int recommend;
 
+    String email;
+
     public User() {
     }
 
@@ -68,6 +70,14 @@ public class User {
 
     public void setRecommend(int recommend) {
         this.recommend = recommend;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getEmail() {
+        return email;
     }
 
     public void upgradeLevel() {
