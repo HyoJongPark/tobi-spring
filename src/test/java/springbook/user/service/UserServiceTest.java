@@ -39,6 +39,9 @@ public class UserServiceTest {
     UserService userService;
 
     @Autowired
+    UserService testUserService;
+
+    @Autowired
     UserServiceImpl userServiceImpl;
 
     @Autowired
@@ -138,21 +141,12 @@ public class UserServiceTest {
     }
 
     @Test
-    @DirtiesContext
     void upgradeAllOrNothing() throws Exception {
-        TestUserService testUserService = new TestUserService(users.get(3).getId());
-        testUserService.setUserDao(userDao);
-        testUserService.setMailSender(mailSender);
-
-        ProxyFactoryBean txProxyFactoryBean = context.getBean("&userService", ProxyFactoryBean.class);
-        txProxyFactoryBean.setTarget(testUserService);
-        UserService txUserService = (UserService) txProxyFactoryBean.getObject();
-
         userDao.clearAll();
         for (User user : users) userDao.add(user);
 
         try {
-            txUserService.upgradeLevels();
+            this.testUserService.upgradeLevels();
             fail("TestUserServiceException expected");
         } catch (TestUserService.TestUserServiceException e) {
         }
@@ -234,4 +228,12 @@ public class UserServiceTest {
         }
     }
 
+    static class TestUserServiceImpl extends UserServiceImpl {
+        private String id = "madnite1";
+
+        protected void upgradeLevel(User user) {
+            if (user.getId().equals(this.id)) throw new TestUserService.TestUserServiceException();
+            super.upgradeLevel(user);
+        }
+    }
 }
